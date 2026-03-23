@@ -138,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let onboardingView = OnboardingView()
         let hostingController = NSHostingController(rootView: onboardingView)
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Welcome to Mac Utils"
+        window.title = "Welcome to MacUtils"
         window.setContentSize(NSSize(width: 520, height: 600))
         window.styleMask = [.titled, .closable]
         window.center()

@@ -62,7 +62,7 @@ struct DropdownView: View {
                 Image(systemName: "square.grid.2x2.fill")
                 .font(.title2)
                 .foregroundColor(.primary)
-            Text("Mac Utils")
+            Text("MacUtils")
                 .font(.title3.bold())
                 .foregroundColor(.primary)
             Spacer()

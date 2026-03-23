@@ -15,13 +15,13 @@ final class SettingsWindowController: NSWindowController {
         let hostingController = NSHostingController(rootView: settingsView)
 
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Mac Utils Settings"
+        window.title = "MacUtils Settings"
         window.setContentSize(NSSize(width: 680, height: 480))
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.minSize = NSSize(width: 580, height: 400)
         window.center()
         window.isReleasedWhenClosed = false
-        window.titlebarAppearsTransparent = true
+        window.titlebarAppearsTransparent = false
         window.titleVisibility = .visible
 
         self.init(window: window)

@@ -45,10 +45,28 @@ struct SettingsView: View {
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 200)
         } detail: {
-            ScrollView {
-                detailContent
-                    .padding(24)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 0) {
+                // Header bar
+                HStack(spacing: 10) {
+                    Image(systemName: selectedTab.icon)
+                        .font(.title3)
+                        .foregroundColor(.primary)
+                    Text(selectedTab.rawValue)
+                        .font(.title3.bold())
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                .background(Color(NSColor.windowBackgroundColor))
+
+                Divider()
+
+                // Scrollable content
+                ScrollView {
+                    detailContent
+                        .padding(24)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
         .frame(width: 680, height: 480)
@@ -71,7 +89,6 @@ struct SettingsView: View {
 
     private var generalTab: some View {
         VStack(alignment: .leading, spacing: 20) {
-            settingsHeader(title: "General", icon: "gearshape.fill")
 
             settingsSection(title: "Startup") {
                 settingsToggle("Launch at login", isOn: Binding(
@@ -120,7 +137,6 @@ struct SettingsView: View {
 
     private var lumensSettingsTab: some View {
         VStack(alignment: .leading, spacing: 20) {
-            settingsHeader(title: "Lumens", icon: "sun.max")
 
             settingsSection(title: "Hotkey Mapping") {
                 settingsToggle("Map F1/F2 to brightness", isOn: Binding(
@@ -172,7 +188,6 @@ struct SettingsView: View {
 
     private var unformatSettingsTab: some View {
         VStack(alignment: .leading, spacing: 20) {
-            settingsHeader(title: "Unformat", icon: "doc.plaintext")
 
             settingsSection(title: "Paste Stripping") {
                 settingsToggle("Enable Unformat", isOn: $unformatManager.isEnabled)
@@ -198,7 +213,6 @@ struct SettingsView: View {
 
     private var ctrlPasteSettingsTab: some View {
         VStack(alignment: .leading, spacing: 20) {
-            settingsHeader(title: "CtrlPaste", icon: "doc.on.clipboard")
 
             settingsSection(title: "Clipboard History") {
                 settingsToggle("Enable CtrlPaste", isOn: Binding(
@@ -248,7 +262,6 @@ struct SettingsView: View {
 
     private var scanSettingsTab: some View {
         VStack(alignment: .leading, spacing: 20) {
-            settingsHeader(title: "Scan", icon: "text.viewfinder")
 
             settingsSection(title: "Text Capture") {
                 settingsToggle("Enable Scan", isOn: Binding(
@@ -295,7 +308,6 @@ struct SettingsView: View {
 
     private var focusSettingsTab: some View {
         VStack(alignment: .leading, spacing: 20) {
-            settingsHeader(title: "Focus", icon: "timer")
 
             settingsSection(title: "Duration") {
                 settingsRow {
@@ -435,7 +447,6 @@ struct SettingsView: View {
 
     private var glimpseSettingsTab: some View {
         VStack(alignment: .leading, spacing: 20) {
-            settingsHeader(title: "Glimpse", icon: "eye")
 
             settingsSection(title: "Quick Look Extension") {
                 settingsRow {
@@ -474,16 +485,6 @@ struct SettingsView: View {
 
     // MARK: - Reusable Components
 
-    private func settingsHeader(title: String, icon: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.primary)
-            Text(title)
-                .font(.title2.bold())
-        }
-        .padding(.bottom, 4)
-    }
 
     private func settingsSection(title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 0) {

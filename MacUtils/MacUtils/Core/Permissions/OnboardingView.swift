@@ -36,7 +36,7 @@ struct OnboardingView: View {
                     .font(.system(size: 56))
                     .foregroundColor(.primary)
 
-                Text("Welcome to Mac Utils")
+                Text("Welcome to MacUtils")
                     .font(.largeTitle.bold())
 
                 Text("A few permissions are needed to enable all features.")
