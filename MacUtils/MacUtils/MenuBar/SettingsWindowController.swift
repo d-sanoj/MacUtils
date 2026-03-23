@@ -16,11 +16,20 @@ final class SettingsWindowController: NSWindowController {
 
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Mac Utils Settings"
-        window.setContentSize(NSSize(width: 640, height: 480))
-        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.setContentSize(NSSize(width: 680, height: 480))
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.minSize = NSSize(width: 580, height: 400)
         window.center()
         window.isReleasedWhenClosed = false
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .visible
 
         self.init(window: window)
+    }
+
+    override func showWindow(_ sender: Any?) {
+        super.showWindow(sender)
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
