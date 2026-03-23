@@ -16,26 +16,37 @@ struct DropdownView: View {
     let onQuit: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
             // 1. App Header
             appHeader
+                .padding(.bottom, 8)
+
+            Divider()
 
             // 2. Focus Section
             focusSection
 
+            Divider()
+
             // 3. Lumens Section
             lumensSection
+
+            Divider()
 
             // 4. Unformat Section
             unformatSection
 
+            Divider()
+
             // 5. CtrlPaste Section
             ctrlPasteSection
+
+            Divider()
 
             // 6. Footer
             footerSection
         }
-        .padding(14)
+        .padding(10)
         .frame(width: 320)
         .background(.ultraThinMaterial)
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
@@ -77,9 +88,6 @@ struct DropdownView: View {
             }
         }
         .padding(12)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     private var focusIdleView: some View {
@@ -184,9 +192,6 @@ struct DropdownView: View {
             }
         }
         .padding(12)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     private func monitorView(monitor: MonitorInfo) -> some View {
@@ -250,9 +255,6 @@ struct DropdownView: View {
                 .foregroundColor(.secondary)
         }
         .padding(12)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     // MARK: - CtrlPaste
@@ -270,7 +272,8 @@ struct DropdownView: View {
                     Button(action: {
                         ctrlPasteManager.clearHistory()
                     }) {
-                        Image(systemName: "trash")
+                        Text("Clear")
+                            .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
@@ -306,9 +309,6 @@ struct DropdownView: View {
             }
         }
         .padding(12)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     // MARK: - Footer
@@ -323,11 +323,8 @@ struct DropdownView: View {
                         .foregroundColor(.primary)
                     Spacer()
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .frame(maxWidth: .infinity)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
             }
             .buttonStyle(.plain)
 
@@ -339,11 +336,8 @@ struct DropdownView: View {
                         .foregroundColor(.primary)
                     Spacer()
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .frame(maxWidth: .infinity)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
             }
             .buttonStyle(.plain)
         }
