@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+Thumbs.db
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata/
+
+# Swift Package Manager
+.build/
+*.resolved
+
+# Build artifacts
+build/
+*.app
+*.ipa
+
+# Environment
+.env
+
+# Editor
+*.swp
+*.swo
+*~
