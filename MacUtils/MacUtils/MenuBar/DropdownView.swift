@@ -59,15 +59,9 @@ struct DropdownView: View {
 
     private var appHeader: some View {
         HStack(spacing: 10) {
-            Image(systemName: "square.grid.2x2.fill")
+                Image(systemName: "square.grid.2x2.fill")
                 .font(.title2)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.blue, .purple],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .foregroundColor(.primary)
             Text("Mac Utils")
                 .font(.title3.bold())
                 .foregroundColor(.primary)
@@ -94,7 +88,7 @@ struct DropdownView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "timer")
-                    .foregroundColor(.blue)
+                    .foregroundColor(.primary)
                     .font(.title3)
                 Text("Focus")
                     .font(.title3.bold())
@@ -174,7 +168,7 @@ struct DropdownView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "sun.max")
-                    .foregroundColor(.orange)
+                    .foregroundColor(.primary)
                     .font(.title3)
                 Text("Lumens")
                     .font(.title3.bold())
@@ -241,7 +235,7 @@ struct DropdownView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: "doc.plaintext")
-                    .foregroundColor(.blue)
+                    .foregroundColor(.primary)
                     .font(.title3)
                 Text("Unformat")
                     .font(.title3.bold())
@@ -263,7 +257,7 @@ struct DropdownView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "doc.on.clipboard")
-                    .foregroundColor(.teal)
+                    .foregroundColor(.primary)
                     .font(.title3)
                 Text("CtrlPaste")
                     .font(.title3.bold())
