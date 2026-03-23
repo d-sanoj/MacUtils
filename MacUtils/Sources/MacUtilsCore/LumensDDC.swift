@@ -70,15 +70,17 @@ public struct MonitorInfo: Identifiable, Equatable {
     public let isExternal: Bool
     public var brightness: Int
     public var volume: Int
+    public var lastVolume: Int?
     public var supportsDDC: Bool
 
     public init(id: UInt32, name: String, isExternal: Bool = true,
-                brightness: Int = 50, volume: Int = 50, supportsDDC: Bool = true) {
+                brightness: Int = 50, volume: Int = 50, lastVolume: Int? = nil, supportsDDC: Bool = true) {
         self.id = id
         self.name = name
         self.isExternal = isExternal
         self.brightness = brightness
         self.volume = volume
+        self.lastVolume = lastVolume
         self.supportsDDC = supportsDDC
     }
 }

@@ -127,14 +127,19 @@ final class LumensManager: ObservableObject {
     func setBrightness(_ value: Int, for monitorID: UInt32) {
         let clamped = clampDDCValue(value)
 
-        if let avService = avServices[monitorID] {
-            ddcWriteViaAVService(avService: avService, command: .brightness, value: clamped)
-        } else {
-            legacyDDCWrite(displayID: monitorID, command: .brightness, value: clamped)
-        }
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            if let avService = self.avServices[monitorID] {
+                self.ddcWriteViaAVService(avService: avService, command: .brightness, value: clamped)
+            } else {
+                self.legacyDDCWrite(displayID: monitorID, command: .brightness, value: clamped)
+            }
 
-        if let index = monitors.firstIndex(where: { $0.id == monitorID }) {
-            monitors[index].brightness = Int(clamped)
+            DispatchQueue.main.async {
+                if let index = self.monitors.firstIndex(where: { $0.id == monitorID }) {
+                    self.monitors[index].brightness = Int(clamped)
+                }
+            }
         }
     }
 
@@ -153,13 +158,15 @@ final class LumensManager: ObservableObject {
     }
 
     func increaseBrightness() {
-        for monitor in monitors {
+        let currentSnapshot = monitors // Take local snapshot of current values
+        for monitor in currentSnapshot {
             setBrightness(min(100, monitor.brightness + 5), for: monitor.id)
         }
     }
 
     func decreaseBrightness() {
-        for monitor in monitors {
+        let currentSnapshot = monitors
+        for monitor in currentSnapshot {
             setBrightness(max(0, monitor.brightness - 5), for: monitor.id)
         }
     }
@@ -176,40 +183,75 @@ final class LumensManager: ObservableObject {
         }
     }
 
+    func toggleMute() {
+        for index in 0..<monitors.count {
+            let monitor = monitors[index]
+            if monitor.volume > 0 {
+                monitors[index].lastVolume = monitor.volume
+                setVolume(0, for: monitor.id)
+            } else {
+                let restore = monitor.lastVolume ?? 50
+                setVolume(restore, for: monitor.id)
+            }
+        }
+    }
+
     // MARK: - Event Tap for Media Keys
 
     private func installEventTap() {
         let eventMask: CGEventMask = (1 << 14)
 
         let callback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
-            guard type.rawValue == 14 else { return Unmanaged.passRetained(event) }
-
-            let nsEvent = NSEvent(cgEvent: event)
-            guard nsEvent?.subtype.rawValue == 8 else { return Unmanaged.passRetained(event) }
-
-            let data1 = nsEvent?.data1 ?? 0
-            let keyCode = (data1 & 0xFFFF0000) >> 16
-            let keyFlags = (data1 & 0x0000FFFF)
-            let keyDown = ((keyFlags & 0xFF00) >> 8) == 0xA
-
             guard let refcon = refcon else { return Unmanaged.passRetained(event) }
             let manager = Unmanaged<LumensManager>.fromOpaque(refcon).takeUnretainedValue()
 
             let mapBrightness = Settings.lumensMapBrightness
             let mapVolume = Settings.lumensMapVolume
-            let isTargetKey = (mapBrightness && (keyCode == 2 || keyCode == 3)) ||
-                              (mapVolume && (keyCode == 0 || keyCode == 1))
 
-            if isTargetKey && !manager.monitors.isEmpty {
-                if keyDown {
-                    DispatchQueue.main.async {
-                        if keyCode == 2 { manager.increaseBrightness() }
-                        else if keyCode == 3 { manager.decreaseBrightness() }
-                        else if keyCode == 0 { manager.increaseVolume() }
-                        else if keyCode == 1 { manager.decreaseVolume() }
+            if type.rawValue == 14 {
+                // systemDefined (Media Keys)
+                let nsEvent = NSEvent(cgEvent: event)
+                guard nsEvent?.subtype.rawValue == 8 else { return Unmanaged.passRetained(event) }
+
+                let data1 = nsEvent?.data1 ?? 0
+                let keyCode = (data1 & 0xFFFF0000) >> 16
+                let keyFlags = (data1 & 0x0000FFFF)
+                let keyDown = ((keyFlags & 0xFF00) >> 8) == 0xA
+
+                let isTargetKey = (mapBrightness && (keyCode == 2 || keyCode == 3 || keyCode == 21 || keyCode == 22)) ||
+                                  (mapVolume && (keyCode == 0 || keyCode == 1 || keyCode == 7))
+
+                if isTargetKey && !manager.monitors.isEmpty {
+                    if keyDown {
+                        DispatchQueue.main.async {
+                            if keyCode == 2 || keyCode == 22 { manager.increaseBrightness() }
+                            else if keyCode == 3 || keyCode == 21 { manager.decreaseBrightness() }
+                            else if keyCode == 0 { manager.increaseVolume() }
+                            else if keyCode == 1 { manager.decreaseVolume() }
+                            else if keyCode == 7 { manager.toggleMute() }
+                        }
                     }
+                    return nil // Swallow event natively to prevent macOS OSD overlay
                 }
-                return nil // Swallow event natively to prevent macOS OSD overlay
+            } else if type == .keyDown {
+                // F14 (107) and F15 (113) for Mac desktop keyboards
+                // 144 and 145 are common alternative brightness keycodes on 3rd party keyboards
+                let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+                let isBrightnessKey = (keyCode == 107 || keyCode == 113 || keyCode == 122 || keyCode == 120 || keyCode == 144 || keyCode == 145) // Always enabled to prevent toggle bugs
+                
+                if isBrightnessKey && !manager.monitors.isEmpty {
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        if keyCode == 113 || keyCode == 120 || keyCode == 144 { manager.increaseBrightness() }
+                        else if keyCode == 107 || keyCode == 122 || keyCode == 145 { manager.decreaseBrightness() }
+                    }
+                    return nil // Swallow event natively to prevent macOS OSD overlay
+                }
+
+                // F10 is 109, some boards map mute to F10 directly
+                if mapVolume && (keyCode == 109 || keyCode == 7) && !manager.monitors.isEmpty {
+                    DispatchQueue.main.async { manager.toggleMute() }
+                    return nil // Swallow event natively to prevent macOS OSD overlay
+                }
             }
 
             return Unmanaged.passRetained(event)
