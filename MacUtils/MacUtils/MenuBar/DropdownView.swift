@@ -8,11 +8,15 @@ struct DropdownView: View {
     @ObservedObject var lumensManager: LumensManager
     @ObservedObject var unformatManager: UnformatManager
 
+    // Live-updating focus settings
+    @State private var focusDuration: Int = Settings.focusDuration
+    @State private var breakDuration: Int = Settings.breakDuration
+
     let onOpenSettings: () -> Void
     let onQuit: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             // 1. App Header
             appHeader
 
@@ -31,24 +35,35 @@ struct DropdownView: View {
             // 6. Footer
             footerSection
         }
-        .padding(12)
+        .padding(14)
         .frame(width: 320)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(.ultraThinMaterial)
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            focusDuration = Settings.focusDuration
+            breakDuration = Settings.breakDuration
+        }
     }
 
     // MARK: - App Header
 
     private var appHeader: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Image(systemName: "square.grid.2x2.fill")
-                .font(.title)
-                .foregroundColor(.accentColor)
+                .font(.title2)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.blue, .purple],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
             Text("Mac Utils")
                 .font(.title3.bold())
+                .foregroundColor(.primary)
             Spacer()
         }
         .padding(.horizontal, 4)
-        .padding(.bottom, 4)
+        .padding(.bottom, 2)
     }
 
     // MARK: - Focus Section
@@ -62,8 +77,9 @@ struct DropdownView: View {
             }
         }
         .padding(12)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(10)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     private var focusIdleView: some View {
@@ -81,8 +97,8 @@ struct DropdownView: View {
             }
 
             HStack(spacing: 8) {
-                chip(text: "\(Settings.focusDuration) min focus", color: .purple)
-                chip(text: "\(Settings.breakDuration) min break", color: .green)
+                chip(text: "\(focusDuration) min focus", color: .purple)
+                chip(text: "\(breakDuration) min break", color: .green)
             }
 
             TextField("What's this session about? (optional)", text: $focusManager.currentNote)
@@ -168,8 +184,9 @@ struct DropdownView: View {
             }
         }
         .padding(12)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(10)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     private func monitorView(monitor: MonitorInfo) -> some View {
@@ -181,24 +198,28 @@ struct DropdownView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "sun.max")
                         .font(.caption2)
+                        .foregroundColor(.secondary)
                     Slider(value: Binding(
                         get: { Double(monitor.brightness) },
                         set: { lumensManager.setBrightness(Int($0), for: monitor.id) }
                     ), in: 0...100)
                     Text("\(monitor.brightness)%")
                         .font(.caption2)
+                        .foregroundColor(.secondary)
                         .frame(width: 30)
                 }
 
                 HStack(spacing: 4) {
                     Image(systemName: "speaker.wave.2")
                         .font(.caption2)
+                        .foregroundColor(.secondary)
                     Slider(value: Binding(
                         get: { Double(monitor.volume) },
                         set: { lumensManager.setVolume(Int($0), for: monitor.id) }
                     ), in: 0...100)
                     Text("\(monitor.volume)%")
                         .font(.caption2)
+                        .foregroundColor(.secondary)
                         .frame(width: 30)
                 }
             } else {
@@ -229,8 +250,9 @@ struct DropdownView: View {
                 .foregroundColor(.secondary)
         }
         .padding(12)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(10)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     // MARK: - CtrlPaste
@@ -274,53 +296,59 @@ struct DropdownView: View {
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
+                        .padding(.vertical, 2)
+                        .padding(.horizontal, 6)
+                        .background(Color.primary.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
                     .buttonStyle(.plain)
-                    .padding(.vertical, 2)
                 }
             }
         }
         .padding(12)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(10)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
     }
 
     // MARK: - Footer
 
     private var footerSection: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 4) {
             Button(action: onOpenSettings) {
                 HStack {
                     Image(systemName: "gear")
+                        .foregroundColor(.secondary)
                     Text("Settings...")
+                        .foregroundColor(.primary)
                     Spacer()
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(6)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
 
             Button(action: onQuit) {
                 HStack {
                     Image(systemName: "power")
+                        .foregroundColor(.secondary)
                     Text("Quit Mac Utils")
+                        .foregroundColor(.primary)
                     Spacer()
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(6)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
         }
-        .padding(.top, 4)
+        .padding(.top, 2)
     }
-
-    // MARK: - Helpers
 
     // MARK: - Helpers
 

@@ -40,7 +40,8 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
 
-        let theme = UserDefaults.standard.string(forKey: "com.macutils.glimpse.defaultTheme") ?? "github"
+        let sharedDefaults = UserDefaults(suiteName: "com.macutils.shared") ?? .standard
+        let theme = sharedDefaults.string(forKey: "com.macutils.glimpse.defaultTheme") ?? "github"
         let cssTheme = themeCSS(for: theme)
 
         let html = """

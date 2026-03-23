@@ -37,27 +37,7 @@ public enum Settings {
         set { defaults.set(newValue, forKey: "com.macutils.unformat.showNotification") }
     }
 
-    // MARK: - Conceal
 
-    public static var concealEnabled: Bool {
-        get {
-            if defaults.object(forKey: "com.macutils.conceal.enabled") == nil {
-                return true
-            }
-            return defaults.bool(forKey: "com.macutils.conceal.enabled")
-        }
-        set { defaults.set(newValue, forKey: "com.macutils.conceal.enabled") }
-    }
-
-    public static var concealShowHiddenFiles: Bool {
-        get { defaults.bool(forKey: "com.macutils.conceal.showHiddenFiles") }
-        set { defaults.set(newValue, forKey: "com.macutils.conceal.showHiddenFiles") }
-    }
-
-    public static var concealHiddenFiles: [String: Double] {
-        get { defaults.dictionary(forKey: "com.macutils.conceal.hiddenFiles") as? [String: Double] ?? [:] }
-        set { defaults.set(newValue, forKey: "com.macutils.conceal.hiddenFiles") }
-    }
 
     // MARK: - CtrlPaste
 
@@ -161,9 +141,14 @@ public enum Settings {
 
     // MARK: - Glimpse
 
+    private static let sharedDefaults = UserDefaults(suiteName: "com.macutils.shared") ?? .standard
+
     public static var glimpseDefaultTheme: String {
-        get { defaults.string(forKey: "com.macutils.glimpse.defaultTheme") ?? "github" }
-        set { defaults.set(newValue, forKey: "com.macutils.glimpse.defaultTheme") }
+        get { sharedDefaults.string(forKey: "com.macutils.glimpse.defaultTheme") ?? "github" }
+        set {
+            sharedDefaults.set(newValue, forKey: "com.macutils.glimpse.defaultTheme")
+            defaults.set(newValue, forKey: "com.macutils.glimpse.defaultTheme")
+        }
     }
 
     // MARK: - Lumens

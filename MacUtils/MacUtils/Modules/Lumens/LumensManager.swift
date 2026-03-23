@@ -199,14 +199,12 @@ final class LumensManager: ObservableObject {
     // MARK: - Event Tap for Media Keys
 
     private func installEventTap() {
-        let eventMask: CGEventMask = (1 << 14)
+        let eventMask: CGEventMask = (1 << 14) | (1 << CGEventType.keyDown.rawValue)
 
         let callback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
             guard let refcon = refcon else { return Unmanaged.passRetained(event) }
             let manager = Unmanaged<LumensManager>.fromOpaque(refcon).takeUnretainedValue()
 
-            let mapBrightness = Settings.lumensMapBrightness
-            let mapVolume = Settings.lumensMapVolume
 
             if type.rawValue == 14 {
                 // systemDefined (Media Keys)
@@ -218,8 +216,8 @@ final class LumensManager: ObservableObject {
                 let keyFlags = (data1 & 0x0000FFFF)
                 let keyDown = ((keyFlags & 0xFF00) >> 8) == 0xA
 
-                let isTargetKey = (mapBrightness && (keyCode == 2 || keyCode == 3 || keyCode == 21 || keyCode == 22)) ||
-                                  (mapVolume && (keyCode == 0 || keyCode == 1 || keyCode == 7))
+                // Unconditionally evaluate to prevent toggle bugs
+                let isTargetKey = (keyCode == 2 || keyCode == 3 || keyCode == 21 || keyCode == 22 || keyCode == 0 || keyCode == 1 || keyCode == 7)
 
                 if isTargetKey && !manager.monitors.isEmpty {
                     if keyDown {
@@ -248,8 +246,8 @@ final class LumensManager: ObservableObject {
                 }
 
                 // F10 is 109, some boards map mute to F10 directly
-                if mapVolume && (keyCode == 109 || keyCode == 7) && !manager.monitors.isEmpty {
-                    DispatchQueue.main.async { manager.toggleMute() }
+                if (keyCode == 109 || keyCode == 7) && !manager.monitors.isEmpty {
+                    DispatchQueue.global(qos: .userInitiated).async { manager.toggleMute() }
                     return nil // Swallow event natively to prevent macOS OSD overlay
                 }
             }
