@@ -21,18 +21,13 @@ final class ScanManager: ObservableObject {
     // MARK: - Hotkey Management
     
     func registerHotkeys() {
-        if globalMonitor != nil { return }
-        
-        // Listen for Cmd+Shift+2 globally (Key Code 19 for '2')
+        // Monitor for Cmd + Shift + 2 globally
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self, self.isEnabled else { return }
-            
-            let command = event.modifierFlags.contains(.command)
-            let shift = event.modifierFlags.contains(.shift)
-            
-            if command && shift && event.keyCode == 19 {
+            guard let self = self else { return }
+            // Cmd + Shift + 2: keyCode 19
+            if event.modifierFlags.contains([.command, .shift]) && event.keyCode == 19 {
                 DispatchQueue.main.async {
-                    self.showOverlay()
+                    self.startCapture()
                 }
             }
         }
@@ -45,58 +40,40 @@ final class ScanManager: ObservableObject {
         }
     }
     
-    // MARK: - Overlay
+    // MARK: - Capture Flow
     
-    func showOverlay() {
-        // Close existing
-        for controller in overlayControllers {
-            controller.close()
-        }
+    func startCapture() {
+        guard isEnabled else { return }
+        
+        // Close any existing overlays
+        overlayControllers.forEach { $0.close() }
         overlayControllers.removeAll()
         
-        // Create an overlay for every screen so multi-monitor setups are fully covered
+        // Create an overlay for each screen
         for screen in NSScreen.screens {
             let controller = ScanOverlayWindowController(scanManager: self, screen: screen)
-            controller.showWindow(nil)
             overlayControllers.append(controller)
+            controller.showWindow(nil)
         }
-        
-        NSApp.activate(ignoringOtherApps: true)
     }
     
-    func closeOverlays() {
-        for controller in overlayControllers {
-            controller.close()
-        }
-        overlayControllers.removeAll()
-    }
-
-    // MARK: - Screen Capture & OCR
-
+    // MARK: - OCR
+    
     func captureAndRecognize(in rect: CGRect, completion: @escaping (String?) -> Void) {
-        // Capture the screen region
-        guard let cgImage = CGWindowListCreateImage(
-            rect,
-            .optionOnScreenOnly,
-            kCGNullWindowID,
-            [.boundsIgnoreFraming]
-        ) else {
+        guard rect.width > 1, rect.height > 1 else {
             completion(nil)
             return
         }
 
-        // Run OCR
-        performOCR(on: cgImage, imageWidth: CGFloat(cgImage.width)) { result in
-            DispatchQueue.main.async {
-                completion(result)
-            }
+        guard let cgImage = CGWindowListCreateImage(rect, .optionOnScreenBelowWindow, kCGNullWindowID, [.bestResolution]) else {
+            completion(nil)
+            return
         }
-    }
+        
+        let imageWidth = CGFloat(cgImage.width)
 
-    private func performOCR(on image: CGImage, imageWidth: CGFloat, completion: @escaping (String?) -> Void) {
         let request = VNRecognizeTextRequest { request, error in
-            guard error == nil,
-                  let observations = request.results as? [VNRecognizedTextObservation],
+            guard let observations = request.results as? [VNRecognizedTextObservation],
                   !observations.isEmpty else {
                 completion(nil)
                 return
@@ -125,7 +102,7 @@ final class ScanManager: ObservableObject {
         request.recognitionLanguages = ["en-US"]
         request.usesLanguageCorrection = true
 
-        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         DispatchQueue.global(qos: .userInitiated).async {
             try? handler.perform([request])
         }
@@ -139,52 +116,51 @@ final class ScanManager: ObservableObject {
     }
 
     func showHUD(characterCount: Int) {
-        // We ignore characterCount per user request
-        guard Settings.scanShowHUD else { return }
-        
-        currentHUDWindow?.close()
+        currentHUDWindow?.orderOut(nil)
+        currentHUDWindow = nil
 
-        let hudView = ScanHUDView()
-        let hostingController = NSHostingController(rootView: hudView)
+        let hudView = NSHostingView(rootView: ScanHUDView())
+        let fittingSize = hudView.fittingSize
 
-        let hudWindow = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 180, height: 50),
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: fittingSize.width, height: fittingSize.height),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        hudWindow.contentViewController = hostingController
-        hudWindow.isOpaque = false
-        hudWindow.backgroundColor = .clear
-        hudWindow.level = .floating
-        hudWindow.hasShadow = false
-        hudWindow.isReleasedWhenClosed = false
-        
-        self.currentHUDWindow = hudWindow
-        
-        // Position top center
-        if let screenFrame = NSScreen.main?.visibleFrame {
-            let x = screenFrame.midX - (hudWindow.frame.width / 2)
-            let y = screenFrame.maxY - hudWindow.frame.height - 16
-            hudWindow.setFrame(NSRect(x: x, y: y, width: hudWindow.frame.width, height: hudWindow.frame.height), display: true)
+        panel.contentView = hudView
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.level = .screenSaver
+        panel.hasShadow = false
+        panel.isReleasedWhenClosed = false
+        panel.ignoresMouseEvents = true
+
+        // Position top center of main screen
+        if let screen = NSScreen.main {
+            let screenFrame = screen.frame
+            let x = screenFrame.midX - (fittingSize.width / 2)
+            let y = screenFrame.maxY - fittingSize.height - 60
+            panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
 
-        hudWindow.alphaValue = 0.0
-        hudWindow.makeKeyAndOrderFront(nil)
-        
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.2
-            hudWindow.animator().alphaValue = 1.0
+        self.currentHUDWindow = panel
+        panel.alphaValue = 0.0
+        panel.orderFrontRegardless()
+
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.25
+            panel.animator().alphaValue = 1.0
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            guard let self = self, self.currentHUDWindow == hudWindow else { return }
-            NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.3
-                hudWindow.animator().alphaValue = 0.0
+            guard let self = self, self.currentHUDWindow === panel else { return }
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = 0.4
+                panel.animator().alphaValue = 0.0
             }) {
-                hudWindow.close()
-                if self.currentHUDWindow == hudWindow {
+                panel.orderOut(nil)
+                if self.currentHUDWindow === panel {
                     self.currentHUDWindow = nil
                 }
             }
@@ -194,19 +170,18 @@ final class ScanManager: ObservableObject {
 
 private struct ScanHUDView: View {
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.green)
-                .font(.body)
+                .font(.system(size: 16))
             Text("Content copied")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.primary)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.regularMaterial)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
         .clipShape(Capsule())
-        .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
-        .padding(12) // Extra padding to prevent shadow clipping
+        .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
     }
 }

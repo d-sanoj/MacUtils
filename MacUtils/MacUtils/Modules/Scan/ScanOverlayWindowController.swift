@@ -77,12 +77,19 @@ final class ScanOverlayNSView: NSView {
     
     override init(frame: NSRect) {
         super.init(frame: frame)
-        // Add a cursor
-        self.addCursorRect(self.bounds, cursor: .crosshair)
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) not implemented")
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .crosshair)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        NSCursor.crosshair.push()
     }
     
     override var acceptsFirstResponder: Bool { true }
