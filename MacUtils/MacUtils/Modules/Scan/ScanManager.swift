@@ -2,6 +2,7 @@ import MacUtilsCore
 import Foundation
 import AppKit
 import Vision
+import SwiftUI
 
 /// Manages OCR text capture from screen regions.
 final class ScanManager: ObservableObject {
@@ -139,29 +140,65 @@ final class ScanManager: ObservableObject {
     func showHUD(characterCount: Int) {
         guard Settings.scanShowHUD else { return }
 
+        let hudView = ScanHUDView(characterCount: characterCount)
+        let hostingController = NSHostingController(rootView: hudView)
+
         let hudWindow = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 60),
+            contentRect: NSRect(x: 0, y: 0, width: 240, height: 60),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
+        
+        hudWindow.contentViewController = hostingController
         hudWindow.isOpaque = false
-        hudWindow.backgroundColor = NSColor.black.withAlphaComponent(0.8)
+        hudWindow.backgroundColor = .clear
         hudWindow.level = .floating
-        hudWindow.hasShadow = true
-
-        let label = NSTextField(labelWithString: "Copied \(characterCount) characters")
-        label.textColor = .white
-        label.font = .systemFont(ofSize: 14, weight: .medium)
-        label.alignment = .center
-        label.frame = hudWindow.contentView?.bounds ?? .zero
-
-        hudWindow.contentView?.addSubview(label)
-        hudWindow.center()
-        hudWindow.makeKeyAndOrderFront(nil)
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            hudWindow.orderOut(nil)
+        hudWindow.hasShadow = false
+        
+        // Position top center
+        if let screenFrame = NSScreen.main?.visibleFrame {
+            let x = screenFrame.midX - (hudWindow.frame.width / 2)
+            let y = screenFrame.maxY - hudWindow.frame.height - 16
+            hudWindow.setFrame(NSRect(x: x, y: y, width: hudWindow.frame.width, height: hudWindow.frame.height), display: true)
         }
+
+        hudWindow.alphaValue = 0.0
+        hudWindow.makeKeyAndOrderFront(nil)
+        
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            hudWindow.animator().alphaValue = 1.0
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.3
+                hudWindow.animator().alphaValue = 0.0
+            }) {
+                hudWindow.orderOut(nil)
+            }
+        }
+    }
+}
+
+private struct ScanHUDView: View {
+    let characterCount: Int
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.green)
+                .font(.body)
+            Text("Copied \(characterCount) characters")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.primary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
+        .padding(12) // Extra padding to prevent shadow clipping
     }
 }
