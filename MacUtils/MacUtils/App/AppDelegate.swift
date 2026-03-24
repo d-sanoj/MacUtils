@@ -29,8 +29,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup menu bar status item
         setupStatusItem()
 
-        // Show onboarding on first launch or if crucial permissions are missing
-        if !Settings.onboardingCompleted || !AXIsProcessTrusted() {
+        // Show onboarding on first launch
+        // If AXIsProcessTrusted() is false later due to app updates/moves,
+        // the user can fix it via the new Permissions tab in Settings.
+        if !Settings.onboardingCompleted {
             showOnboarding()
         }
 
