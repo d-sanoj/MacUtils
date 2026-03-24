@@ -46,7 +46,9 @@ final class ScanOverlayWindowController: NSWindowController {
                 scanManager.captureAndRecognize(in: cgRect) { result in
                     if let text = result {
                         scanManager.copyToClipboard(text)
-                        scanManager.showHUD(characterCount: text.count)
+                        DispatchQueue.main.async {
+                            scanManager.showHUD(characterCount: text.count)
+                        }
                     }
                 }
             }

@@ -245,11 +245,7 @@ final class LumensManager: ObservableObject {
                     return nil // Swallow event natively to prevent macOS OSD overlay
                 }
 
-                // F10 is 109, some boards map mute to F10 directly
-                if (keyCode == 109 || keyCode == 7) && !manager.monitors.isEmpty {
-                    DispatchQueue.global(qos: .userInitiated).async { manager.toggleMute() }
-                    return nil // Swallow event natively to prevent macOS OSD overlay
-                }
+
             }
 
             return Unmanaged.passRetained(event)
