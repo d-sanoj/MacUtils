@@ -65,6 +65,12 @@ final class ScanOverlayWindowController: NSWindowController {
         super.showWindow(sender)
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+        NSCursor.crosshair.set()
+    }
+
+    override func close() {
+        NSCursor.arrow.set()
+        super.close()
     }
 }
 
@@ -77,19 +83,21 @@ final class ScanOverlayNSView: NSView {
     
     override init(frame: NSRect) {
         super.init(frame: frame)
+        let trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.activeAlways, .cursorUpdate, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) not implemented")
     }
 
-    override func resetCursorRects() {
-        addCursorRect(bounds, cursor: .crosshair)
-    }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        NSCursor.crosshair.push()
+    override func cursorUpdate(with event: NSEvent) {
+        NSCursor.crosshair.set()
     }
     
     override var acceptsFirstResponder: Bool { true }

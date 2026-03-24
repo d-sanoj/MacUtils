@@ -19,7 +19,7 @@ struct SettingsView: View {
         case ctrlPaste = "CtrlPaste"
         case scan = "Scan"
         case focus = "Focus"
-        case glimpse = "Glimpse"
+        case permissions = "Permissions"
 
         var id: String { rawValue }
 
@@ -31,7 +31,7 @@ struct SettingsView: View {
             case .ctrlPaste: return "doc.on.clipboard"
             case .scan: return "text.viewfinder"
             case .focus: return "timer"
-            case .glimpse: return "eye"
+            case .permissions: return "lock.shield"
             }
         }
     }
@@ -81,7 +81,7 @@ struct SettingsView: View {
         case .ctrlPaste: ctrlPasteSettingsTab
         case .scan: scanSettingsTab
         case .focus: focusSettingsTab
-        case .glimpse: glimpseSettingsTab
+        case .permissions: permissionsSettingsTab
         }
     }
 
@@ -443,40 +443,69 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Glimpse Tab
+    // MARK: - Permissions Tab
 
-    private var glimpseSettingsTab: some View {
+    private var permissionsSettingsTab: some View {
         VStack(alignment: .leading, spacing: 20) {
 
-            settingsSection(title: "Quick Look Extension") {
+            settingsSection(title: "Required Permissions") {
                 settingsRow {
                     HStack {
-                        Text("Enable Glimpse")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Accessibility")
+                            Text("Required for hotkeys, clipboard, and paste stripping")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                         Spacer()
-                        Button("Open Quick Look Settings") {
-                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
+                        if AXIsProcessTrusted() {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                        } else {
+                            Button("Grant") {
+                                let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
+                                AXIsProcessTrustedWithOptions(options)
+                                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+
+                settingsRow {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Screen Recording")
+                            Text("Required for Scan OCR text capture")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button("Open Settings") {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
                 }
+            }
 
+            settingsSection(title: "Extensions") {
                 settingsRow {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Default theme")
-                        Text("Applied to code preview in Quick Look")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Picker("", selection: Binding(
-                            get: { Settings.glimpseDefaultTheme },
-                            set: { Settings.glimpseDefaultTheme = $0 }
-                        )) {
-                            Text("GitHub").tag("github")
-                            Text("Monokai").tag("monokai")
-                            Text("Dracula").tag("dracula")
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Glimpse Quick Look")
+                            Text("Enable in System Settings → Extensions → Quick Look")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
+                        Spacer()
+                        Button("Open Settings") {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                     }
                 }
             }

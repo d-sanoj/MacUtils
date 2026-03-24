@@ -17,13 +17,7 @@ struct DropdownView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 1. App Header
-            appHeader
-                .padding(.bottom, 8)
-
-            Divider()
-
-            // 2. Focus Section
+            // 1. Focus Section
             focusSection
 
             Divider()
@@ -59,9 +53,8 @@ struct DropdownView: View {
 
     private var appHeader: some View {
         HStack(spacing: 10) {
-                Image(systemName: "square.grid.2x2.fill")
-                .font(.title2)
-                .foregroundColor(.primary)
+            appIcon(size: 18)
+                .frame(width: 20, height: 20)
             Text("MacUtils")
                 .font(.title3.bold())
                 .foregroundColor(.primary)
@@ -69,6 +62,33 @@ struct DropdownView: View {
         }
         .padding(.horizontal, 4)
         .padding(.bottom, 2)
+    }
+
+    private func appIcon(size: CGFloat) -> some View {
+        Group {
+            if let image = loadAppIcon() {
+                Image(nsImage: image)
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: size, height: size)
+                    .foregroundColor(.primary)
+            } else {
+                Image(systemName: "square.grid.2x2.fill")
+                    .font(.system(size: size * 0.7))
+                    .foregroundColor(.primary)
+            }
+        }
+    }
+
+    private func loadAppIcon() -> NSImage? {
+        // Try bundle resource first, then debug path
+        if let path = Bundle.main.path(forResource: "icon", ofType: "png", inDirectory: "icon"),
+           let img = NSImage(contentsOfFile: path) {
+            return img
+        }
+        let debugPath = (Bundle.main.bundlePath.components(separatedBy: ".build").first ?? "") + "icon/icon.png"
+        return NSImage(contentsOfFile: debugPath)
     }
 
     // MARK: - Focus Section
@@ -112,9 +132,9 @@ struct DropdownView: View {
             }) {
                 Text("Start focus session")
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.blue)
+            .buttonStyle(HoverButtonStyle(filled: true, color: .blue))
             .controlSize(.small)
         }
     }
@@ -148,7 +168,7 @@ struct DropdownView: View {
                         focusManager.pause()
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(HoverButtonStyle())
                 .controlSize(.small)
 
                 Spacer()
@@ -156,7 +176,7 @@ struct DropdownView: View {
                 Button("Skip →") {
                     focusManager.skip()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(HoverButtonStyle())
                 .controlSize(.small)
             }
         }
@@ -254,8 +274,8 @@ struct DropdownView: View {
     // MARK: - CtrlPaste
 
     private var ctrlPasteSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center) {
                 Image(systemName: "doc.on.clipboard")
                     .foregroundColor(.primary)
                     .font(.title3)
@@ -270,7 +290,7 @@ struct DropdownView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(HoverButtonStyle())
                     .controlSize(.small)
                 }
             }
@@ -294,11 +314,8 @@ struct DropdownView: View {
                                 .foregroundColor(.secondary)
                         }
                         .padding(.vertical, 2)
-                        .padding(.horizontal, 6)
-                        .background(Color.primary.opacity(0.04))
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(HoverButtonStyle())
                 }
             }
         }
@@ -308,7 +325,7 @@ struct DropdownView: View {
     // MARK: - Footer
 
     private var footerSection: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 2) {
             Button(action: onOpenSettings) {
                 HStack {
                     Image(systemName: "gear")
@@ -320,20 +337,20 @@ struct DropdownView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(HoverButtonStyle())
 
             Button(action: onQuit) {
                 HStack {
                     Image(systemName: "power")
                         .foregroundColor(.secondary)
-                    Text("Quit Mac Utils")
+                    Text("Quit MacUtils")
                         .foregroundColor(.primary)
                     Spacer()
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(HoverButtonStyle())
         }
         .padding(.top, 2)
     }
@@ -347,5 +364,34 @@ struct DropdownView: View {
             .padding(.vertical, 4)
             .background(Capsule().fill(color.opacity(0.15)))
             .foregroundColor(color)
+    }
+}
+
+// MARK: - Hover Button Style
+
+struct HoverButtonStyle: ButtonStyle {
+    var filled: Bool = false
+    var color: Color = .primary
+
+    @State private var isHovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(filled ? .white : nil)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(backgroundFill(isPressed: configuration.isPressed))
+            )
+            .onHover { hovering in
+                isHovered = hovering
+            }
+    }
+
+    private func backgroundFill(isPressed: Bool) -> Color {
+        if filled {
+            return isPressed ? color.opacity(0.6) : (isHovered ? color.opacity(0.85) : color)
+        } else {
+            return (isHovered || isPressed) ? Color.primary.opacity(0.08) : Color.clear
+        }
     }
 }

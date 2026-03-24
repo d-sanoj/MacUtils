@@ -32,9 +32,27 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             // Header
             VStack(spacing: 12) {
-                Image(systemName: "square.grid.2x2.fill")
-                    .font(.system(size: 56))
-                    .foregroundColor(.primary)
+                Group {
+                    if let path = Bundle.main.path(forResource: "icon", ofType: "png", inDirectory: "icon"),
+                       let img = NSImage(contentsOfFile: path) {
+                        Image(nsImage: img)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 72, height: 72)
+                    } else {
+                        let debugPath = (Bundle.main.bundlePath.components(separatedBy: ".build").first ?? "") + "icon/icon.png"
+                        if let img = NSImage(contentsOfFile: debugPath) {
+                            Image(nsImage: img)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 72, height: 72)
+                        } else {
+                            Image(systemName: "square.grid.2x2.fill")
+                                .font(.system(size: 56))
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
 
                 Text("Welcome to MacUtils")
                     .font(.largeTitle.bold())

@@ -120,10 +120,11 @@ final class ScanManager: ObservableObject {
         currentHUDWindow = nil
 
         let hudView = NSHostingView(rootView: ScanHUDView())
+        hudView.frame = NSRect(x: 0, y: 0, width: 300, height: 60)
         let fittingSize = hudView.fittingSize
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: fittingSize.width, height: fittingSize.height),
+            contentRect: NSRect(x: 0, y: 0, width: max(fittingSize.width, 200), height: max(fittingSize.height, 44)),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -183,5 +184,6 @@ private struct ScanHUDView: View {
         .background(.ultraThinMaterial)
         .clipShape(Capsule())
         .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+        .fixedSize()
     }
 }

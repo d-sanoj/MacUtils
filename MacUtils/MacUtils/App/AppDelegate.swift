@@ -59,7 +59,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "Mac Utils")
+            // Load custom icon and set as template (auto-adapts to light/dark mode)
+            if let iconPath = Bundle.main.path(forResource: "icon_statusbar", ofType: "png", inDirectory: "icon"),
+               let image = NSImage(contentsOfFile: iconPath) {
+                image.isTemplate = true
+                image.size = NSSize(width: 18, height: 18)
+                button.image = image
+            } else {
+                // Fallback: try loading from project directory for debug builds
+                let debugPath = Bundle.main.bundlePath
+                    .components(separatedBy: ".build").first ?? ""
+                let iconFile = debugPath + "icon/icon_statusbar.png"
+                if let image = NSImage(contentsOfFile: iconFile) {
+                    image.isTemplate = true
+                    image.size = NSSize(width: 18, height: 18)
+                    button.image = image
+                } else {
+                    button.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "MacUtils")
+                }
+            }
             button.action = #selector(togglePopover)
             button.target = self
         }
