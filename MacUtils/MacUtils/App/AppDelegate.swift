@@ -60,7 +60,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let button = statusItem?.button {
             // Load custom icon and set as template (auto-adapts to light/dark mode)
-            if let iconPath = Bundle.main.path(forResource: "icon_statusbar", ofType: "png", inDirectory: "icon"),
+            let path = Bundle.main.path(forResource: "icon_statusbar", ofType: "png", inDirectory: "icon") ?? Bundle.main.path(forResource: "icon_statusbar", ofType: "png")
+            if let iconPath = path,
                let image = NSImage(contentsOfFile: iconPath) {
                 image.isTemplate = true
                 image.size = NSSize(width: 18, height: 18)

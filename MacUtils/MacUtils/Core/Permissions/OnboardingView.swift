@@ -33,19 +33,23 @@ struct OnboardingView: View {
             // Header
             VStack(spacing: 12) {
                 Group {
-                    if let path = Bundle.main.path(forResource: "icon", ofType: "png", inDirectory: "icon"),
+                    if let path = Bundle.main.path(forResource: "icon", ofType: "png", inDirectory: "icon") ?? Bundle.main.path(forResource: "icon", ofType: "png"),
                        let img = NSImage(contentsOfFile: path) {
                         Image(nsImage: img)
+                            .renderingMode(.template)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 72, height: 72)
+                            .foregroundColor(.primary)
                     } else {
                         let debugPath = (Bundle.main.bundlePath.components(separatedBy: ".build").first ?? "") + "icon/icon.png"
                         if let img = NSImage(contentsOfFile: debugPath) {
                             Image(nsImage: img)
+                                .renderingMode(.template)
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 72, height: 72)
+                                .foregroundColor(.primary)
                         } else {
                             Image(systemName: "square.grid.2x2.fill")
                                 .font(.system(size: 56))

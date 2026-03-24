@@ -138,17 +138,6 @@ struct SettingsView: View {
     private var lumensSettingsTab: some View {
         VStack(alignment: .leading, spacing: 20) {
 
-            settingsSection(title: "Hotkey Mapping") {
-                settingsToggle("Map F1/F2 to brightness", isOn: Binding(
-                    get: { Settings.lumensMapBrightness },
-                    set: { Settings.lumensMapBrightness = $0 }
-                ))
-                settingsToggle("Map F10/F11/F12 to volume", isOn: Binding(
-                    get: { Settings.lumensMapVolume },
-                    set: { Settings.lumensMapVolume = $0 }
-                ))
-            }
-
             settingsSection(title: "Detected Monitors") {
                 if lumensManager.monitors.isEmpty {
                     settingsRow {

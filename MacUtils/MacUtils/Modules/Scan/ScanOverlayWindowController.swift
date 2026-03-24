@@ -63,7 +63,6 @@ final class ScanOverlayWindowController: NSWindowController {
     
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
-        NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
         NSCursor.crosshair.set()
     }

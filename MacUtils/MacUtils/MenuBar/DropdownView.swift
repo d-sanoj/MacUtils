@@ -82,9 +82,10 @@ struct DropdownView: View {
     }
 
     private func loadAppIcon() -> NSImage? {
-        // Try bundle resource first, then debug path
-        if let path = Bundle.main.path(forResource: "icon", ofType: "png", inDirectory: "icon"),
-           let img = NSImage(contentsOfFile: path) {
+        // Try bundle resource first, then flattened path, then debug path
+        let path = Bundle.main.path(forResource: "icon", ofType: "png", inDirectory: "icon") ?? Bundle.main.path(forResource: "icon", ofType: "png")
+        if let iconPath = path,
+           let img = NSImage(contentsOfFile: iconPath) {
             return img
         }
         let debugPath = (Bundle.main.bundlePath.components(separatedBy: ".build").first ?? "") + "icon/icon.png"
