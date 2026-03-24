@@ -12,6 +12,7 @@ final class ScanManager: ObservableObject {
     // Store overlay controllers (one per screen)
     private var overlayControllers: [ScanOverlayWindowController] = []
     private var globalMonitor: Any?
+    private var currentHUDWindow: NSPanel?
 
     private let reconstructor = ScanTextReconstructor()
 
@@ -138,23 +139,28 @@ final class ScanManager: ObservableObject {
     }
 
     func showHUD(characterCount: Int) {
+        // We ignore characterCount per user request
         guard Settings.scanShowHUD else { return }
+        
+        currentHUDWindow?.close()
 
-        let hudView = ScanHUDView(characterCount: characterCount)
+        let hudView = ScanHUDView()
         let hostingController = NSHostingController(rootView: hudView)
 
         let hudWindow = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 240, height: 60),
+            contentRect: NSRect(x: 0, y: 0, width: 180, height: 50),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        
         hudWindow.contentViewController = hostingController
         hudWindow.isOpaque = false
         hudWindow.backgroundColor = .clear
         hudWindow.level = .floating
         hudWindow.hasShadow = false
+        hudWindow.isReleasedWhenClosed = false
+        
+        self.currentHUDWindow = hudWindow
         
         // Position top center
         if let screenFrame = NSScreen.main?.visibleFrame {
@@ -171,26 +177,28 @@ final class ScanManager: ObservableObject {
             hudWindow.animator().alphaValue = 1.0
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self = self, self.currentHUDWindow == hudWindow else { return }
             NSAnimationContext.runAnimationGroup({ context in
                 context.duration = 0.3
                 hudWindow.animator().alphaValue = 0.0
             }) {
-                hudWindow.orderOut(nil)
+                hudWindow.close()
+                if self.currentHUDWindow == hudWindow {
+                    self.currentHUDWindow = nil
+                }
             }
         }
     }
 }
 
 private struct ScanHUDView: View {
-    let characterCount: Int
-    
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.green)
                 .font(.body)
-            Text("Copied \(characterCount) characters")
+            Text("Content copied")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.primary)
         }
