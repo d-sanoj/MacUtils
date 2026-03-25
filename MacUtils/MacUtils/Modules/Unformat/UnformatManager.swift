@@ -8,7 +8,7 @@ final class UnformatManager: ObservableObject {
     @Published var isEnabled: Bool = Settings.unformatEnabled {
         didSet {
             Settings.unformatEnabled = isEnabled
-            if isEnabled { installEventTap() } else { removeEventTap() }
+            refreshEventTap()
         }
     }
 
@@ -24,12 +24,32 @@ final class UnformatManager: ObservableObject {
 
     // MARK: - Event Tap
 
+    func refreshEventTap() {
+        guard isEnabled, AXIsProcessTrusted() else {
+            removeEventTap()
+            return
+        }
+
+        guard eventTap == nil else { return }
+        installEventTap()
+    }
+
     func installEventTap() {
         guard eventTap == nil else { return }
 
         let eventMask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
 
         let callback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
+            guard let refcon = refcon else { return Unmanaged.passRetained(event) }
+            let manager = Unmanaged<UnformatManager>.fromOpaque(refcon).takeUnretainedValue()
+
+            if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                if let tap = manager.eventTap {
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                }
+                return Unmanaged.passRetained(event)
+            }
+
             guard type == .keyDown else { return Unmanaged.passRetained(event) }
 
             // Check for ⌘V (keycode 9, command modifier)
@@ -39,10 +59,6 @@ final class UnformatManager: ObservableObject {
             guard keyCode == 9, flags.contains(.maskCommand), !flags.contains(.maskControl), !flags.contains(.maskAlternate) else {
                 return Unmanaged.passRetained(event)
             }
-
-            // Get reference to self
-            guard let refcon = refcon else { return Unmanaged.passRetained(event) }
-            let manager = Unmanaged<UnformatManager>.fromOpaque(refcon).takeUnretainedValue()
 
             guard manager.isEnabled else { return Unmanaged.passRetained(event) }
 

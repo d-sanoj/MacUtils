@@ -29,23 +29,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup menu bar status item
         setupStatusItem()
 
-        // Show onboarding on first launch
-        // If AXIsProcessTrusted() is false later due to app updates/moves,
-        // the user can fix it via the new Permissions tab in Settings.
-        if !Settings.onboardingCompleted {
+        // Show onboarding whenever required permissions are missing (even if previously completed).
+        // This handles app updates/moves/reinstalls where macOS trust grants no longer apply.
+        let permissions = PermissionsManager()
+        let accessibilityGranted = permissions.accessibilityGranted
+        let screenRecordingGranted = permissions.screenRecordingGranted
+        if !(accessibilityGranted && screenRecordingGranted) {
             showOnboarding()
+        } else if !Settings.onboardingCompleted {
+            Settings.onboardingCompleted = true
         }
 
         // Start clipboard polling
         ctrlPasteManager?.startPolling()
 
-        // Register global hotkeys if enabled
-        if Settings.scanEnabled {
-            scanManager?.registerHotkeys()
-        }
-
-        if Settings.unformatEnabled {
-            unformatManager?.installEventTap()
+        if accessibilityGranted && screenRecordingGranted {
+            refreshGlobalIntegrations()
         }
     }
 
@@ -53,6 +52,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         scanManager?.unregisterHotkeys()
         unformatManager?.removeEventTap()
         ctrlPasteManager?.stopPolling()
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        let permissions = PermissionsManager()
+        if permissions.accessibilityGranted && permissions.screenRecordingGranted {
+            refreshGlobalIntegrations()
+        }
     }
 
     // MARK: - Status Item
@@ -165,5 +171,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func refreshGlobalIntegrations() {
+        if Settings.scanEnabled {
+            scanManager?.registerHotkeys()
+        } else {
+            scanManager?.unregisterHotkeys()
+        }
+
+        unformatManager?.refreshEventTap()
+        lumensManager?.refreshMediaKeyTap()
     }
 }

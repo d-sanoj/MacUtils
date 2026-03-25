@@ -1,6 +1,11 @@
 import Foundation
 import AppKit
 
+private func permissionsDebugLog(_ message: String) {
+    guard ProcessInfo.processInfo.environment["MACUTILS_DEBUG_PERMISSIONS"] == "1" else { return }
+    print("[Permissions] \(message)")
+}
+
 /// Manages checking and requesting macOS permissions.
 final class PermissionsManager: ObservableObject {
 
@@ -16,12 +21,16 @@ final class PermissionsManager: ObservableObject {
     func checkPermissions() {
         accessibilityGranted = AXIsProcessTrusted()
         screenRecordingGranted = checkScreenRecording()
+        permissionsDebugLog("check accessibility=\(accessibilityGranted) screen=\(screenRecordingGranted)")
     }
 
     func startPolling() {
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        stopPolling()
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.checkPermissions()
         }
+        pollTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     func stopPolling() {
@@ -32,12 +41,24 @@ final class PermissionsManager: ObservableObject {
     // MARK: - Request Permissions
 
     func requestAccessibility() {
-        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
-        AXIsProcessTrustedWithOptions(options)
+        NSApp.activate(ignoringOtherApps: true)
+        permissionsDebugLog("open accessibility settings")
+        openAccessibilitySettings()
     }
 
     func requestScreenRecording() {
-        CGRequestScreenCaptureAccess()
+        NSApp.activate(ignoringOtherApps: true)
+        if CGPreflightScreenCaptureAccess() {
+            screenRecordingGranted = true
+            permissionsDebugLog("screen recording already granted")
+            return
+        }
+
+        let granted = CGRequestScreenCaptureAccess()
+        permissionsDebugLog("requestScreenRecording result=\(granted)")
+        if granted {
+            screenRecordingGranted = true
+        }
     }
 
     func openAccessibilitySettings() {
@@ -58,17 +79,6 @@ final class PermissionsManager: ObservableObject {
     // MARK: - Private
 
     private func checkScreenRecording() -> Bool {
-        // CGRequestScreenCaptureAccess returns cached result
-        // We check by attempting a minimal screen capture
-        let stream = CGDisplayStream(
-            dispatchQueueDisplay: CGMainDisplayID(),
-            outputWidth: 1,
-            outputHeight: 1,
-            pixelFormat: Int32(kCVPixelFormatType_32BGRA),
-            properties: nil,
-            queue: .main,
-            handler: { _, _, _, _ in }
-        )
-        return stream != nil
+        CGPreflightScreenCaptureAccess()
     }
 }

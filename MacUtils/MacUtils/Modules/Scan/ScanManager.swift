@@ -1,6 +1,7 @@
 import MacUtilsCore
 import Foundation
 import AppKit
+import Carbon
 import Vision
 import SwiftUI
 
@@ -11,32 +12,103 @@ final class ScanManager: ObservableObject {
     
     // Store overlay controllers (one per screen)
     private var overlayControllers: [ScanOverlayWindowController] = []
-    private var globalMonitor: Any?
     private var currentHUDWindow: NSPanel?
+    private var hotKeyRef: EventHotKeyRef?
+    private var hotKeyHandlerRef: EventHandlerRef?
 
     private let reconstructor = ScanTextReconstructor()
+    private let scanHotKeyID: UInt32 = 1
+    private let scanHotKeySignature: OSType = 0x5343414E // 'SCAN'
 
     init() {}
+
+    deinit {
+        unregisterHotkeys()
+    }
     
     // MARK: - Hotkey Management
     
     func registerHotkeys() {
-        // Monitor for Cmd + Shift + 2 globally
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self else { return }
-            // Cmd + Shift + 2: keyCode 19
-            if event.modifierFlags.contains([.command, .shift]) && event.keyCode == 19 {
-                DispatchQueue.main.async {
-                    self.startCapture()
+        guard hotKeyRef == nil else { return }
+
+        if hotKeyHandlerRef == nil {
+            var eventSpec = EventTypeSpec(
+                eventClass: OSType(kEventClassKeyboard),
+                eventKind: UInt32(kEventHotKeyPressed)
+            )
+
+            let callback: EventHandlerUPP = { _, event, userData in
+                guard
+                    let event,
+                    let userData
+                else {
+                    return noErr
                 }
+
+                var hotKeyID = EventHotKeyID()
+                let status = GetEventParameter(
+                    event,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &hotKeyID
+                )
+
+                guard status == noErr else { return status }
+
+                let manager = Unmanaged<ScanManager>.fromOpaque(userData).takeUnretainedValue()
+                guard hotKeyID.signature == manager.scanHotKeySignature, hotKeyID.id == manager.scanHotKeyID else {
+                    return noErr
+                }
+
+                DispatchQueue.main.async {
+                    manager.startCapture()
+                }
+
+                return noErr
             }
+
+            let userData = Unmanaged.passUnretained(self).toOpaque()
+            let installStatus = InstallEventHandler(
+                GetApplicationEventTarget(),
+                callback,
+                1,
+                &eventSpec,
+                userData,
+                &hotKeyHandlerRef
+            )
+
+            guard installStatus == noErr else {
+                print("[Scan] Failed to install hotkey handler: \(installStatus)")
+                hotKeyHandlerRef = nil
+                return
+            }
+        }
+
+        var hotKeyID = EventHotKeyID(signature: scanHotKeySignature, id: scanHotKeyID)
+        let modifiers = UInt32(cmdKey | shiftKey)
+        let registerStatus = RegisterEventHotKey(
+            UInt32(kVK_ANSI_2),
+            modifiers,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotKeyRef
+        )
+
+        guard registerStatus == noErr else {
+            print("[Scan] Failed to register Cmd+Shift+2 hotkey: \(registerStatus)")
+            hotKeyRef = nil
+            return
         }
     }
     
     func unregisterHotkeys() {
-        if let monitor = globalMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalMonitor = nil
+        if let hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+            self.hotKeyRef = nil
         }
     }
     

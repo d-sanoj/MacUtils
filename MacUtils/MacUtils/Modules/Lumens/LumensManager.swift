@@ -4,6 +4,11 @@ import AppKit
 import IOKit
 import IOKit.i2c
 
+private func lumensDebugLog(_ message: String) {
+    guard ProcessInfo.processInfo.environment["MACUTILS_DEBUG_LUMENS"] == "1" else { return }
+    print("[Lumens] \(message)")
+}
+
 // MARK: - IOAVService declarations (private API, works on Apple Silicon)
 
 /// Opaque type for IOAVService connections
@@ -53,7 +58,10 @@ final class LumensManager: ObservableObject {
 
     init() {
         refreshMonitors()
-        installEventTap()
+    }
+
+    deinit {
+        removeEventTap()
     }
 
     // MARK: - Monitor Enumeration
@@ -126,13 +134,16 @@ final class LumensManager: ObservableObject {
 
     func setBrightness(_ value: Int, for monitorID: UInt32) {
         let clamped = clampDDCValue(value)
+        lumensDebugLog("setBrightness monitor=\(monitorID) value=\(clamped)")
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             if let avService = self.avServices[monitorID] {
-                self.ddcWriteViaAVService(avService: avService, command: .brightness, value: clamped)
+                let success = self.ddcWriteViaAVService(avService: avService, command: .brightness, value: clamped)
+                lumensDebugLog("ddcWrite brightness via AVService success=\(success)")
             } else {
-                self.legacyDDCWrite(displayID: monitorID, command: .brightness, value: clamped)
+                let success = self.legacyDDCWrite(displayID: monitorID, command: .brightness, value: clamped)
+                lumensDebugLog("ddcWrite brightness via legacy success=\(success)")
             }
 
             DispatchQueue.main.async {
@@ -145,11 +156,14 @@ final class LumensManager: ObservableObject {
 
     func setVolume(_ value: Int, for monitorID: UInt32) {
         let clamped = clampDDCValue(value)
+        lumensDebugLog("setVolume monitor=\(monitorID) value=\(clamped)")
 
         if let avService = avServices[monitorID] {
-            ddcWriteViaAVService(avService: avService, command: .volume, value: clamped)
+            let success = ddcWriteViaAVService(avService: avService, command: .volume, value: clamped)
+            lumensDebugLog("ddcWrite volume via AVService success=\(success)")
         } else {
-            legacyDDCWrite(displayID: monitorID, command: .volume, value: clamped)
+            let success = legacyDDCWrite(displayID: monitorID, command: .volume, value: clamped)
+            lumensDebugLog("ddcWrite volume via legacy success=\(success)")
         }
 
         if let index = monitors.firstIndex(where: { $0.id == monitorID }) {
@@ -158,6 +172,7 @@ final class LumensManager: ObservableObject {
     }
 
     func increaseBrightness() {
+        lumensDebugLog("increaseBrightness")
         let currentSnapshot = monitors // Take local snapshot of current values
         for monitor in currentSnapshot {
             setBrightness(min(100, monitor.brightness + 5), for: monitor.id)
@@ -165,6 +180,7 @@ final class LumensManager: ObservableObject {
     }
 
     func decreaseBrightness() {
+        lumensDebugLog("decreaseBrightness")
         let currentSnapshot = monitors
         for monitor in currentSnapshot {
             setBrightness(max(0, monitor.brightness - 5), for: monitor.id)
@@ -172,18 +188,21 @@ final class LumensManager: ObservableObject {
     }
 
     func increaseVolume() {
+        lumensDebugLog("increaseVolume")
         for monitor in monitors {
             setVolume(min(100, monitor.volume + 5), for: monitor.id)
         }
     }
 
     func decreaseVolume() {
+        lumensDebugLog("decreaseVolume")
         for monitor in monitors {
             setVolume(max(0, monitor.volume - 5), for: monitor.id)
         }
     }
 
     func toggleMute() {
+        lumensDebugLog("toggleMute")
         for index in 0..<monitors.count {
             let monitor = monitors[index]
             if monitor.volume > 0 {
@@ -198,13 +217,37 @@ final class LumensManager: ObservableObject {
 
     // MARK: - Event Tap for Media Keys
 
+    func refreshMediaKeyTap() {
+        let axTrusted = AXIsProcessTrusted()
+        lumensDebugLog("refreshMediaKeyTap ax=\(axTrusted) monitors=\(monitors.count)")
+
+        guard axTrusted else {
+            removeEventTap()
+            return
+        }
+
+        guard eventTap == nil else { return }
+
+        installEventTap()
+    }
+
     private func installEventTap() {
-        let eventMask: CGEventMask = (1 << 14) | (1 << CGEventType.keyDown.rawValue)
+        guard eventTap == nil else { return }
+
+        let systemDefinedMask = CGEventMask(1 << NSEvent.EventType.systemDefined.rawValue)
+        let keyDownMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
+        let eventMask = systemDefinedMask | keyDownMask
 
         let callback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
             guard let refcon = refcon else { return Unmanaged.passRetained(event) }
             let manager = Unmanaged<LumensManager>.fromOpaque(refcon).takeUnretainedValue()
 
+            if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                if let tap = manager.eventTap {
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                }
+                return Unmanaged.passRetained(event)
+            }
 
             if type.rawValue == 14 {
                 // systemDefined (Media Keys)
@@ -216,10 +259,15 @@ final class LumensManager: ObservableObject {
                 let keyFlags = (data1 & 0x0000FFFF)
                 let keyDown = ((keyFlags & 0xFF00) >> 8) == 0xA
 
-                // Unconditionally evaluate to prevent toggle bugs
-                let isTargetKey = (keyCode == 2 || keyCode == 3 || keyCode == 21 || keyCode == 22 || keyCode == 0 || keyCode == 1 || keyCode == 7)
+                lumensDebugLog("systemDefined keyCode=\(keyCode) keyDown=\(keyDown)")
 
-                if isTargetKey && !manager.monitors.isEmpty {
+                let isVolumeKey = (keyCode == 0 || keyCode == 1 || keyCode == 7)
+                let isBrightnessKey = (keyCode == 2 || keyCode == 3 || keyCode == 21 || keyCode == 22)
+
+                let shouldHandleVolume = isVolumeKey && Settings.lumensMapVolume
+                let shouldHandleBrightness = isBrightnessKey && Settings.lumensMapBrightness
+
+                if (shouldHandleVolume || shouldHandleBrightness) && !manager.monitors.isEmpty {
                     if keyDown {
                         DispatchQueue.main.async {
                             if keyCode == 2 || keyCode == 22 { manager.increaseBrightness() }
@@ -232,12 +280,13 @@ final class LumensManager: ObservableObject {
                     return nil // Swallow event natively to prevent macOS OSD overlay
                 }
             } else if type == .keyDown {
-                // F14 (107) and F15 (113) for Mac desktop keyboards
-                // 144 and 145 are common alternative brightness keycodes on 3rd party keyboards
+                // Handle keyboards configured to send standard function keys instead of media keys.
                 let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-                let isBrightnessKey = (keyCode == 107 || keyCode == 113 || keyCode == 122 || keyCode == 120 || keyCode == 144 || keyCode == 145) // Always enabled to prevent toggle bugs
+                lumensDebugLog("keyDown keyCode=\(keyCode)")
+                let isStandardBrightnessKey = (keyCode == 107 || keyCode == 113 || keyCode == 122 || keyCode == 120 || keyCode == 144 || keyCode == 145)
+                let isStandardVolumeKey = (keyCode == 109 || keyCode == 103 || keyCode == 111)
                 
-                if isBrightnessKey && !manager.monitors.isEmpty {
+                if isStandardBrightnessKey && Settings.lumensMapBrightness && !manager.monitors.isEmpty {
                     DispatchQueue.global(qos: .userInitiated).async {
                         if keyCode == 113 || keyCode == 120 || keyCode == 144 { manager.increaseBrightness() }
                         else if keyCode == 107 || keyCode == 122 || keyCode == 145 { manager.decreaseBrightness() }
@@ -245,7 +294,14 @@ final class LumensManager: ObservableObject {
                     return nil // Swallow event natively to prevent macOS OSD overlay
                 }
 
-
+                if isStandardVolumeKey && Settings.lumensMapVolume && !manager.monitors.isEmpty {
+                    DispatchQueue.main.async {
+                        if keyCode == 111 { manager.increaseVolume() }
+                        else if keyCode == 103 { manager.decreaseVolume() }
+                        else if keyCode == 109 { manager.toggleMute() }
+                    }
+                    return nil
+                }
             }
 
             return Unmanaged.passRetained(event)
@@ -263,9 +319,11 @@ final class LumensManager: ObservableObject {
         )
 
         guard let tap = eventTap else {
-            print("[Lumens] Failed to create event tap")
+            lumensDebugLog("Failed to create event tap")
             return
         }
+
+        lumensDebugLog("Created event tap")
 
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         if let source = runLoopSource {
@@ -273,6 +331,18 @@ final class LumensManager: ObservableObject {
         }
 
         CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    private func removeEventTap() {
+        if let source = runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
+            runLoopSource = nil
+        }
+
+        if let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            eventTap = nil
+        }
     }
 
     // MARK: - AVService DDC (Apple Silicon — primary method)

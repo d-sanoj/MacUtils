@@ -16,6 +16,9 @@ DerivedData/
 build/
 *.app
 *.ipa
+MacUtils/build_dmg/
+MacUtils/local_test/
+*.dmg
 
 # Environment
 .env

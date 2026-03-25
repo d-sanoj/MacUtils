@@ -151,4 +151,25 @@ public enum Settings {
         }
     }
 
+    // MARK: - Lumens
+
+    public static var lumensMapBrightness: Bool {
+        get {
+            if defaults.object(forKey: "com.macutils.lumens.mapBrightness") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "com.macutils.lumens.mapBrightness")
+        }
+        set { defaults.set(newValue, forKey: "com.macutils.lumens.mapBrightness") }
+    }
+
+    public static var lumensMapVolume: Bool {
+        get {
+            if defaults.object(forKey: "com.macutils.lumens.mapVolume") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "com.macutils.lumens.mapVolume")
+        }
+        set { defaults.set(newValue, forKey: "com.macutils.lumens.mapVolume") }
+    }
 }

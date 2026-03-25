@@ -3,9 +3,8 @@ import SwiftUI
 /// First-launch permission wizard shown as a window.
 struct OnboardingView: View {
     @StateObject private var permissions = PermissionsManager()
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var currentStep: Int = 0
+    @State private var didRequestRelaunch = false
+    @State private var relaunchTask: Process?
 
     private let steps = [
         OnboardingStep(
@@ -93,38 +92,14 @@ struct OnboardingView: View {
 
             Spacer()
 
-            // Progress indicator
-            HStack(spacing: 8) {
-                ForEach(0..<steps.count, id: \.self) { index in
-                    Circle()
-                        .fill(permissionGranted(for: index) ? Color.green : Color.gray.opacity(0.3))
-                        .frame(width: 8, height: 8)
-                }
-            }
-            .padding(.bottom, 12)
-
             Divider()
 
-            // Done button
-            HStack {
-                Text(allRequiredGranted
-                     ? "You're all set!"
-                     : "Grant required permissions to continue")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                Spacer()
-
-                Button("Get Started") {
-                    Settings.onboardingCompleted = true
-                    permissions.stopPolling()
-                    dismiss()
-                    NSApp.keyWindow?.close()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!allRequiredGranted)
-                .controlSize(.large)
-            }
+            Text("Restart or reopen the app after enabling the permissions and MacUtils will launch in the status bar. You can check whether permissions are enabled from the Permissions tab in Settings.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.horizontal, 20)
             .padding(20)
         }
         .frame(width: 520, height: 600)
@@ -133,6 +108,13 @@ struct OnboardingView: View {
         }
         .onDisappear {
             permissions.stopPolling()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            permissions.checkPermissions()
+        }
+        .onChange(of: allRequiredGranted) { granted in
+            guard granted else { return }
+            relaunchIfNeeded()
         }
     }
 
@@ -153,15 +135,29 @@ struct OnboardingView: View {
         switch index {
         case 0:
             permissions.requestAccessibility()
-            permissions.openAccessibilitySettings()
         case 1:
             permissions.requestScreenRecording()
-            permissions.openScreenRecordingSettings()
         case 2:
             Settings.launchAtLogin.toggle()
         default:
             break
         }
+    }
+
+    private func relaunchIfNeeded() {
+        guard !didRequestRelaunch else { return }
+        didRequestRelaunch = true
+        Settings.onboardingCompleted = true
+        permissions.stopPolling()
+
+        let bundlePath = Bundle.main.bundlePath
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "sleep 1; /usr/bin/open -n \"$1\"", "sh", bundlePath]
+        relaunchTask = task
+
+        try? task.run()
+        NSApp.terminate(nil)
     }
 
     private func permissionRow(step: Int, config: OnboardingStep, isGranted: Bool, action: @escaping () -> Void) -> some View {

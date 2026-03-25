@@ -11,6 +11,7 @@ struct SettingsView: View {
     @ObservedObject var lumensManager: LumensManager
 
     @State private var selectedTab: SettingsTab = .general
+    @StateObject private var permissions = PermissionsManager()
 
     enum SettingsTab: String, CaseIterable, Identifiable {
         case general = "General"
@@ -137,6 +138,17 @@ struct SettingsView: View {
 
     private var lumensSettingsTab: some View {
         VStack(alignment: .leading, spacing: 20) {
+
+            settingsSection(title: "Hotkey Mapping") {
+                settingsToggle("Map F1/F2 to brightness", isOn: Binding(
+                    get: { Settings.lumensMapBrightness },
+                    set: { Settings.lumensMapBrightness = $0 }
+                ))
+                settingsToggle("Map F10/F11/F12 to volume", isOn: Binding(
+                    get: { Settings.lumensMapVolume },
+                    set: { Settings.lumensMapVolume = $0 }
+                ))
+            }
 
             settingsSection(title: "Detected Monitors") {
                 if lumensManager.monitors.isEmpty {
@@ -447,14 +459,12 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
-                        if AXIsProcessTrusted() {
+                        if permissions.accessibilityGranted {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
                         } else {
                             Button("Grant") {
-                                let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
-                                AXIsProcessTrustedWithOptions(options)
-                                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                                permissions.requestAccessibility()
                             }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
@@ -471,33 +481,24 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
-                        Button("Open Settings") {
-                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                        if permissions.screenRecordingGranted {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                        } else {
+                            Button("Grant") {
+                                permissions.requestScreenRecording()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
                 }
             }
-
-            settingsSection(title: "Extensions") {
-                settingsRow {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Glimpse Quick Look")
-                            Text("Enable in System Settings → Extensions → Quick Look")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        Button("Open Settings") {
-                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-                }
-            }
+        }
+        .onAppear { permissions.startPolling() }
+        .onDisappear { permissions.stopPolling() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            permissions.checkPermissions()
         }
     }
 

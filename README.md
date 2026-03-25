@@ -1,101 +1,82 @@
-# Mac Utils
+# MacUtils
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Mac Utils** — a free, open-source macOS menu bar utility suite.
+MacUtils is a lightweight macOS menu bar app that bundles a few everyday utilities into one place:
 
-A lightweight menu bar app that puts nine powerful utilities at your fingertips: display brightness control, window snapping, clipboard history, paste formatting stripping, image optimisation, file hiding, OCR text capture, focus timer, and Quick Look extensions.
-
----
-
-## Screenshots
-
-*Screenshots coming soon*
-
----
+- `Focus` for quick Pomodoro-style focus sessions
+- `Lumens` for external display brightness and volume control
+- `CtrlPaste` for clipboard history
+- `Unformat` for stripping rich-text formatting on paste
+- `Scan` for OCR text capture from the screen
 
 ## Requirements
 
-- **macOS 12 Monterey** or later
-- **Apple Silicon** or **Intel** Mac (universal binary)
+- macOS 13 or later
+- Swift 5.9+ if building locally
 
-## Installation
+## Install From GitHub Releases
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/yourusername/MacUtils.git
-   ```
-2. Open `MacUtils/MacUtils.xcodeproj` in Xcode
-3. Select the **MacUtils** scheme
-4. Build and Run (⌘R)
+If you just want to use the app, download the latest `.dmg` from [GitHub Releases](https://github.com/d-sanoj/MacUtils/releases).
 
-The app will appear in your menu bar as a grid icon.
+1. Download the latest `MacUtils-*.dmg`
+2. Open the DMG
+3. Drag `MacUtils.app` into `/Applications`
+4. Eject the DMG
+5. Launch `MacUtils.app` from `/Applications`
 
----
+Important:
+- Do not run the app directly from the mounted DMG
+- Launching from `/Applications` helps macOS keep permissions and relaunch behavior consistent
 
-## Modules
+## Run Locally From Source
 
-| Module | Description |
-|--------|-------------|
-| **Lumens** | Control brightness and volume of external monitors via DDC/CI |
-| **Tyle** | Snap windows to screen halves and quarters via keyboard shortcuts |
-| **Unformat** | Intercept ⌘V system-wide and strip rich text formatting |
-| **CtrlPaste** | Remember and recall your last 20 clipboard entries |
-| **Shrink** | Losslessly optimise images by stripping all metadata |
-| **Conceal** | Hide/unhide files and toggle Finder hidden file visibility |
-| **Scan** | Capture and copy any text visible on screen using OCR |
-| **Focus** | Pomodoro-style focus timer with session notes and history |
-| **Glimpse** | Quick Look extension for code, markdown, CSV, ZIP, and more |
-
----
-
-## Permissions
-
-Mac Utils requires the following permissions to function:
-
-| Permission | Why It's Needed |
-|------------|-----------------|
-| **Accessibility** | Window snapping (Tyle), paste interception (Unformat), keyboard shortcuts (Lumens F-keys), screen text capture (Scan) |
-| **Screen Recording** | OCR text capture (Scan) — needs to read screen contents |
-| **Automation (Apple Events)** | Restarting Finder when toggling hidden files (Conceal) |
-| **Finder Extension** | Right-click context menus for image optimisation (Shrink) and file hiding (Conceal) |
-
-All permissions are requested on first launch via an onboarding wizard. You can manage them in **System Settings → Privacy & Security**.
-
----
-
-## Building from Source
-
-### Core Logic Tests (Swift Package)
-
-You can run the core logic tests without Xcode:
+The Swift package for the app lives in the `MacUtils/` subdirectory.
 
 ```bash
-cd MacUtils
+git clone https://github.com/d-sanoj/MacUtils.git
+cd MacUtils/MacUtils
+swift run MacUtils
+```
+
+For a release build:
+
+```bash
+cd MacUtils/MacUtils
+swift build -c release
+```
+
+To run the test suite:
+
+```bash
+cd MacUtils/MacUtils
 swift test
 ```
 
-### Full App Build (Xcode)
+## Permissions
 
-1. Open `MacUtils.xcodeproj`
-2. Select the **MacUtils** scheme
-3. Product → Build (⌘B)
-4. Product → Test (⌘U) for full test suite
+MacUtils currently uses:
 
----
+- `Accessibility` for global keyboard handling and paste interception
+- `Screen Recording` for the `Scan` OCR workflow
 
-## Contributing
+The app guides you through permission setup on first launch. You can also re-check the current permission state from the app’s `Settings > Permissions` view.
 
-Contributions are welcome! Please:
+## Modules
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+| Module | What it does |
+|--------|---------------|
+| `Focus` | Starts focus/break sessions and keeps lightweight session history |
+| `Lumens` | Controls external monitor brightness and volume, including media-key mapping |
+| `CtrlPaste` | Stores recent clipboard entries for quick reuse |
+| `Unformat` | Removes rich formatting when pasting plain text |
+| `Scan` | Lets you capture screen text and copy it using OCR |
 
----
+## Development Notes
+
+- The repo ignores generated DMGs and local export output
+- Release installers are intended to be distributed through GitHub Releases, not committed into the repo
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

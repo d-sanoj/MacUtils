@@ -8,6 +8,8 @@ struct DropdownView: View {
     @ObservedObject var lumensManager: LumensManager
     @ObservedObject var unformatManager: UnformatManager
 
+    private let trailingControlWidth: CGFloat = 56
+
     // Live-updating focus settings
     @State private var focusDuration: Int = Settings.focusDuration
     @State private var breakDuration: Int = Settings.breakDuration
@@ -169,7 +171,7 @@ struct DropdownView: View {
                         focusManager.pause()
                     }
                 }
-                .buttonStyle(HoverButtonStyle())
+                .buttonStyle(HoverButtonStyle(horizontalPadding: 10, verticalPadding: 5))
                 .controlSize(.small)
 
                 Spacer()
@@ -177,7 +179,7 @@ struct DropdownView: View {
                 Button("Skip →") {
                     focusManager.skip()
                 }
-                .buttonStyle(HoverButtonStyle())
+                .buttonStyle(HoverButtonStyle(horizontalPadding: 10, verticalPadding: 5))
                 .controlSize(.small)
             }
         }
@@ -226,7 +228,7 @@ struct DropdownView: View {
                     Text("\(monitor.brightness)%")
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                        .frame(width: 30)
+                        .frame(width: trailingControlWidth, alignment: .trailing)
                 }
 
                 HStack(spacing: 4) {
@@ -240,7 +242,7 @@ struct DropdownView: View {
                     Text("\(monitor.volume)%")
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                        .frame(width: 30)
+                        .frame(width: trailingControlWidth, alignment: .trailing)
                 }
             } else {
                 Text("DDC not supported")
@@ -254,20 +256,24 @@ struct DropdownView: View {
 
     private var unformatSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
+            HStack(alignment: .center, spacing: 10) {
                 Image(systemName: "doc.plaintext")
                     .foregroundColor(.primary)
                     .font(.title3)
-                Text("Unformat")
-                    .font(.title3.bold())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Unformat")
+                        .font(.title3.bold())
+                    Text("Strip formatting on paste")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 Spacer()
                 Toggle("", isOn: $unformatManager.isEnabled)
                     .labelsHidden()
+                    .toggleStyle(.switch)
                     .controlSize(.small)
+                    .frame(width: trailingControlWidth, alignment: .trailing)
             }
-            Text("Strip formatting on paste")
-                .font(.caption)
-                .foregroundColor(.secondary)
         }
         .padding(12)
     }
@@ -291,8 +297,9 @@ struct DropdownView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    .buttonStyle(HoverButtonStyle())
+                    .buttonStyle(HoverButtonStyle(horizontalPadding: 8, verticalPadding: 4))
                     .controlSize(.small)
+                    .frame(width: trailingControlWidth, alignment: .trailing)
                 }
             }
 
@@ -311,12 +318,13 @@ struct DropdownView: View {
                                 .lineLimit(1)
                             Spacer()
                             Text(entry.relativeTime)
-                                .font(.caption2)
+                                .font(.caption)
                                 .foregroundColor(.secondary)
+                                .frame(width: trailingControlWidth, alignment: .trailing)
                         }
-                        .padding(.vertical, 2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(HoverButtonStyle())
+                    .buttonStyle(HoverButtonStyle(horizontalPadding: 8, verticalPadding: 4, cornerRadius: 8))
                 }
             }
         }
@@ -326,34 +334,27 @@ struct DropdownView: View {
     // MARK: - Footer
 
     private var footerSection: some View {
-        VStack(spacing: 2) {
+        HStack {
             Button(action: onOpenSettings) {
-                HStack {
-                    Image(systemName: "gear")
-                        .foregroundColor(.secondary)
-                    Text("Settings...")
-                        .foregroundColor(.primary)
-                    Spacer()
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+                Image(systemName: "gearshape")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 14, weight: .semibold))
             }
-            .buttonStyle(HoverButtonStyle())
+            .buttonStyle(HoverButtonStyle(horizontalPadding: 10, verticalPadding: 8, cornerRadius: 10))
+            .frame(width: trailingControlWidth, alignment: .leading)
+
+            Spacer()
 
             Button(action: onQuit) {
-                HStack {
-                    Image(systemName: "power")
-                        .foregroundColor(.secondary)
-                    Text("Quit MacUtils")
-                        .foregroundColor(.primary)
-                    Spacer()
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+                Image(systemName: "power")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 14, weight: .semibold))
             }
-            .buttonStyle(HoverButtonStyle())
+            .buttonStyle(HoverButtonStyle(horizontalPadding: 10, verticalPadding: 8, cornerRadius: 10))
+            .frame(width: trailingControlWidth, alignment: .trailing)
         }
-        .padding(.top, 2)
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
     }
 
     // MARK: - Helpers
@@ -373,14 +374,20 @@ struct DropdownView: View {
 struct HoverButtonStyle: ButtonStyle {
     var filled: Bool = false
     var color: Color = .primary
+    var horizontalPadding: CGFloat = 6
+    var verticalPadding: CGFloat = 4
+    var cornerRadius: CGFloat = 6
 
     @State private var isHovered = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundColor(filled ? .white : nil)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+            .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(backgroundFill(isPressed: configuration.isPressed))
             )
             .onHover { hovering in
