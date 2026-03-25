@@ -150,10 +150,31 @@ struct OnboardingView: View {
         Settings.onboardingCompleted = true
         permissions.stopPolling()
 
+        let currentPID = ProcessInfo.processInfo.processIdentifier
         let bundlePath = Bundle.main.bundlePath
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/sh")
-        task.arguments = ["-c", "sleep 1; /usr/bin/open -n \"$1\"", "sh", bundlePath]
+        task.arguments = [
+            "-c",
+            """
+            target_pid="$1"
+            app_path="$2"
+            deadline=$(( $(date +%s) + 30 ))
+
+            while kill -0 "$target_pid" 2>/dev/null; do
+                if [ "$(date +%s)" -ge "$deadline" ]; then
+                    exit 0
+                fi
+                sleep 1
+            done
+
+            sleep 1
+            /usr/bin/open "$app_path"
+            """,
+            "sh",
+            String(currentPID),
+            bundlePath
+        ]
         relaunchTask = task
 
         try? task.run()

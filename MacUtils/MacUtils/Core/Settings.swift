@@ -139,18 +139,6 @@ public enum Settings {
         set { defaults.set(newValue, forKey: "com.macutils.focus.sessions") }
     }
 
-    // MARK: - Glimpse
-
-    private static let sharedDefaults = UserDefaults(suiteName: "com.macutils.shared") ?? .standard
-
-    public static var glimpseDefaultTheme: String {
-        get { sharedDefaults.string(forKey: "com.macutils.glimpse.defaultTheme") ?? "github" }
-        set {
-            sharedDefaults.set(newValue, forKey: "com.macutils.glimpse.defaultTheme")
-            defaults.set(newValue, forKey: "com.macutils.glimpse.defaultTheme")
-        }
-    }
-
     // MARK: - Lumens
 
     public static var lumensMapBrightness: Bool {
