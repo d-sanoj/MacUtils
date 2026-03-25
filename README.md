@@ -62,6 +62,23 @@ MacUtils currently uses:
 
 The app guides you through permission setup on first launch. You can also re-check the current permission state from the app’s `Settings > Permissions` view.
 
+## Resetting Permissions While Testing
+
+If you uninstall the app, move it between locations, or test multiple builds, macOS can keep stale permission records.
+
+1. Quit `MacUtils`
+2. Remove the app copy you were testing
+3. Reset the cached permissions in Terminal:
+
+```bash
+tccutil reset Accessibility com.macutils.app
+tccutil reset ScreenCapture com.macutils.app
+```
+
+Then reinstall `MacUtils.app` into `/Applications` and launch it again.
+
+If macOS still shows stale permission state, logging out or restarting macOS usually clears the remaining UI cache.
+
 ## Modules
 
 | Module | What it does |
