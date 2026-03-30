@@ -253,13 +253,19 @@ final class LumensManager: ObservableObject {
                 // systemDefined (Media Keys)
                 let nsEvent = NSEvent(cgEvent: event)
                 guard nsEvent?.subtype.rawValue == 8 else { return Unmanaged.passRetained(event) }
+                let modifierFlags = nsEvent?.modifierFlags ?? []
+                let isFunctionModified = modifierFlags.contains(.function)
 
                 let data1 = nsEvent?.data1 ?? 0
                 let keyCode = (data1 & 0xFFFF0000) >> 16
                 let keyFlags = (data1 & 0x0000FFFF)
                 let keyDown = ((keyFlags & 0xFF00) >> 8) == 0xA
 
-                lumensDebugLog("systemDefined keyCode=\(keyCode) keyDown=\(keyDown)")
+                lumensDebugLog("systemDefined keyCode=\(keyCode) keyDown=\(keyDown) fn=\(isFunctionModified)")
+
+                if isFunctionModified {
+                    return Unmanaged.passRetained(event)
+                }
 
                 let isVolumeKey = (keyCode == 0 || keyCode == 1 || keyCode == 7)
                 let isBrightnessKey = (keyCode == 2 || keyCode == 3 || keyCode == 21 || keyCode == 22)
@@ -282,7 +288,15 @@ final class LumensManager: ObservableObject {
             } else if type == .keyDown {
                 // Handle keyboards configured to send standard function keys instead of media keys.
                 let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-                lumensDebugLog("keyDown keyCode=\(keyCode)")
+                let modifierFlags = NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue))
+                let isFunctionModified = modifierFlags.contains(.function)
+                let isStandardTopRowFunctionKey = (keyCode == 122 || keyCode == 120 || keyCode == 109 || keyCode == 103 || keyCode == 111)
+                lumensDebugLog("keyDown keyCode=\(keyCode) fn=\(isFunctionModified)")
+
+                if isFunctionModified && isStandardTopRowFunctionKey {
+                    return Unmanaged.passRetained(event)
+                }
+
                 let isStandardBrightnessKey = (keyCode == 107 || keyCode == 113 || keyCode == 122 || keyCode == 120 || keyCode == 144 || keyCode == 145)
                 let isStandardVolumeKey = (keyCode == 109 || keyCode == 103 || keyCode == 111)
                 
